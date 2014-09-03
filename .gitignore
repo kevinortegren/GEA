@@ -8,13 +8,13 @@
 # User-specific files
 *.suo
 *.user
-*.filters
-*.sln
+
+
 *.suo
 *.tlog
 *.lastbuildstate
 *.idb
-*.vcxproj
+
 *.exe
 *.sln.docstates
 
