@@ -27,24 +27,9 @@ void* StackAllocator::Alloc( unsigned int size_bytes )
     return ptr;
 }
 
-void StackAllocator::Rewind( void* ptr )
-{
-    m_ptr = ptr;
-}
-
-void* StackAllocator::GetPointer( void ) const
-{
-    return m_ptr;
-}
-
-void StackAllocator::Clear( void )
+void StackAllocator::Clear(  )
 {
     m_ptr = m_mem;
-}
-
-void* StackAllocator::GetBegin( void ) const
-{
-    return m_mem;
 }
 
 unsigned int StackAllocator::GetTotalSize() const
@@ -57,11 +42,19 @@ unsigned int StackAllocator::GetAllocatedSize() const
     return ((int)m_ptr - (int)m_mem);
 }
 
-StackAllocator& operator<<( StackAllocator& out, unsigned int value )
+
+
+StackMemoryManager::StackMemoryManager(unsigned int stackSize_bytes)
+	: allocator(stackSize_bytes)
+{}
+
+void* StackMemoryManager::Alloc(unsigned int size_bytes)
 {
-    unsigned int* ptr = (unsigned int*)out.Alloc(sizeof(value));
-    *ptr = value;
-    return out;
+	std::lock_guard<std::mutex> lock(mtx);
+	return allocator.Alloc(size_bytes);
 }
 
-
+void StackMemoryManager::Clear()
+{
+	allocator.Clear();
+}
