@@ -1,17 +1,46 @@
 #pragma once
 
-class FreeList
-{
-public:
-	FreeList();
-	void Initialize(void* start, unsigned elementSize, unsigned numElements);
-	void Free();
-	void* Obtain();
-	void Lose(void* ptr);
+#include <mutex>
 
-private:
-	void* m_start;
-	FreeList* m_next;
+struct PoolElement
+{
+	PoolElement* m_next;
 };
 
+class PoolAllocator
+{
+public:
+	PoolAllocator(unsigned elementSize, unsigned numElements);
+	~PoolAllocator();
 
+	void Free();
+	void* Alloc();
+	void Free(void* ptr);
+
+private:
+	void Initialize(unsigned elementSize, unsigned numElements);
+
+	PoolElement* m_start;
+	PoolElement* m_next;
+};
+
+class PoolMemoryManager
+{
+public:
+	PoolMemoryManager(unsigned elementSize, unsigned numElements);
+	void* Alloc();
+	void Free(void* ptr);
+private:
+	std::mutex mtx;
+	PoolAllocator allocator;
+};
+
+class DefaultMemoryManager 
+{
+public:
+	DefaultMemoryManager(unsigned elementSize);
+	void* Alloc();
+	void Free(void* ptr);
+private:
+	unsigned elementSize;
+};

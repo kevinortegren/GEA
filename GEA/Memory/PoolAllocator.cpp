@@ -1,27 +1,35 @@
 #include "PoolAllocator.h"
 #include <malloc.h>
 
-FreeList::FreeList()
+PoolAllocator::PoolAllocator(unsigned elementSize, unsigned numElements)
 	: m_start(nullptr), m_next(nullptr)
 {
+	m_start = (PoolElement*)malloc( elementSize * numElements );
 
+	Initialize(elementSize, numElements);
 }
 
-void FreeList::Initialize(void* start, unsigned elementSize, unsigned numElements)
+PoolAllocator::~PoolAllocator()
 {
-	m_start = start;
+    if(m_start != 0) {
+        free(m_start);
+        m_start = 0;
+    }
+}
 
+void PoolAllocator::Initialize(unsigned elementSize, unsigned numElements)
+{
 	union 
 	{
 		void* as_void;
 		char* as_char;
-		FreeList* as_self;
+		PoolElement* as_self;
 	};
 
-	as_void = start;
+	as_void = m_start;
 	m_next = as_self;
 
-	FreeList* runner = m_next;
+	PoolElement* runner = m_next;
 	for(unsigned i = 0; i < numElements; ++i)
 	{	
 		runner->m_next = as_self;
@@ -30,30 +38,63 @@ void FreeList::Initialize(void* start, unsigned elementSize, unsigned numElement
 	}
 
 	runner->m_next = nullptr;
-	FreeList* completeList = (FreeList*) start;
 };
 
-void FreeList::Free()
+void PoolAllocator::Free()
 {
     free(m_start);
 }
 
-void* FreeList::Obtain()
+void* PoolAllocator::Alloc()
 {
 	// Reached the end of list return nullptr.
 	if (m_next == nullptr) {
 		return nullptr;
 	}
  
-	FreeList* head = m_next;
+	PoolElement* head = m_next;
 	m_next = head->m_next;
 	return head;
 }
  
-void FreeList::Lose(void* ptr)
+void PoolAllocator::Free(void* ptr)
 {
-	FreeList* head = static_cast<FreeList*>(ptr);
+	PoolElement* head = static_cast<PoolElement*>(ptr);
 	head->m_next = m_next;
 	m_next = head;
+}
+
+PoolMemoryManager::PoolMemoryManager(unsigned elementSize, unsigned numElements)
+	: allocator(elementSize, numElements)
+{
+
+}
+
+void* PoolMemoryManager::Alloc()
+{
+	std::lock_guard<std::mutex> lock(mtx);
+	return allocator.Alloc();
+}
+ 
+void PoolMemoryManager::Free(void* ptr)
+{
+	std::lock_guard<std::mutex> lock(mtx);
+	allocator.Free(ptr);
+}
+
+
+DefaultMemoryManager::DefaultMemoryManager(unsigned elementSize)
+{
+	this->elementSize = elementSize;
+}
+
+void* DefaultMemoryManager::Alloc()
+{
+	return malloc(elementSize);
+}
+
+void DefaultMemoryManager::Free(void* ptr)
+{
+	free(ptr);
 }
 

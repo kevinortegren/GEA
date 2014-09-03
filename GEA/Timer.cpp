@@ -1,5 +1,4 @@
 #include "Timer.h"
-#include <WinBase.h>
 
 Timer::Timer()
 {
@@ -26,5 +25,5 @@ double Timer::Stop()
 	// Convert ticks to microseconds.
 	elapsed.QuadPart /= frequency.QuadPart;
 
-	return double(elapsed.QuadPart) / 1000000.0;
+	return double(elapsed.QuadPart) / 1000.0;
 }

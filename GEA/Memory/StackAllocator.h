@@ -32,4 +32,7 @@ private:
 	std::mutex mtx;
 };
 
-
+inline void* operator new(size_t nbytes, StackMemoryManager& manager)
+{
+	return manager.Alloc(nbytes);
+}
