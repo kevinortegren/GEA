@@ -1,24 +1,17 @@
 #pragma once
 
-#include <Utility/include/Utility_Helper.h>
-
-namespace Utility
+class FreeList
 {
-	namespace Memory
-	{
-		class UTILITY_API FreeList
-		{
-		public:
-			FreeList();
-			void Initialize(void* start, unsigned elementSize, unsigned numElements);
-			void Free();
-			void* Obtain();
-			void Lose(void* ptr);
+public:
+	FreeList();
+	void Initialize(void* start, unsigned elementSize, unsigned numElements);
+	void Free();
+	void* Obtain();
+	void Lose(void* ptr);
 
-		private:
-			void* m_start;
-			FreeList* m_next;
-		};
-	}
-}
+private:
+	void* m_start;
+	FreeList* m_next;
+};
+
 

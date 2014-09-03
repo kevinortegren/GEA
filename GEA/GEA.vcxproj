@@ -71,6 +71,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Memory\PoolAllocator.cpp" />
+    <ClCompile Include="Memory\StackAllocator.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Memory\PoolAllocator.h" />
+    <ClInclude Include="Memory\StackAllocator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
