@@ -47,6 +47,15 @@ void PoolAllocator::Free()
 
 void* PoolAllocator::Alloc()
 {
+	if (m_next != nullptr) {
+		PoolElement* head = m_next;
+		m_next = head->m_next;
+		return head;
+	}
+
+	return nullptr;
+
+	/*
 	// Reached the end of list return nullptr.
 	if (m_next == nullptr) {
 		return nullptr;
@@ -55,11 +64,13 @@ void* PoolAllocator::Alloc()
 	PoolElement* head = m_next;
 	m_next = head->m_next;
 	return head;
+	*/
 }
  
 void PoolAllocator::Free(void* ptr)
 {
-	PoolElement* head = static_cast<PoolElement*>(ptr);
+	//PoolElement* head = static_cast<PoolElement*>(ptr);
+	PoolElement* head = (PoolElement*)ptr;
 	head->m_next = m_next;
 	m_next = head;
 }
@@ -72,13 +83,13 @@ PoolMemoryManager::PoolMemoryManager(unsigned elementSize, unsigned numElements)
 
 void* PoolMemoryManager::Alloc()
 {
-	std::lock_guard<std::mutex> lock(mtx);
+	//std::lock_guard<std::mutex> lock(mtx);
 	return allocator.Alloc();
 }
  
 void PoolMemoryManager::Free(void* ptr)
 {
-	std::lock_guard<std::mutex> lock(mtx);
+	//std::lock_guard<std::mutex> lock(mtx);
 	allocator.Free(ptr);
 }
 

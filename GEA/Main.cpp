@@ -1,6 +1,7 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <fstream>
 #include "Timer.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/PoolAllocator.h"
@@ -27,10 +28,10 @@ struct Particle
 };
 
 template <typename T>
-void SimplePoolTestUnthreaded(T& allocator);
+void SimplePoolTestUnthreaded(T& allocator, std::fstream& p_file);
 
 template <typename T>
-void PoolTestUnthreaded(T& allocator);
+void PoolTestUnthreaded(T& allocator, std::fstream& p_file);
 
 void StackTestCustom();
 void StackTestTaskCustom(StackMemoryManager& stack);
@@ -42,21 +43,31 @@ void StackTestTaskCustomSameSize(StackMemoryManager& stack);
 
 int main()
 {
+	std::fstream file;
+
 	/*
 	StackTestCustomUnthreaded();
 	StackTestCustom();
 	StackTestDefault();
 	*/
 
+	
 	DefaultMemoryManager defaultMM(sizeof(Particle));
-	PoolMemoryManager poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT);
+	PoolMemoryManager poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT * 2);
 
+	file.open("pool_custom.csv", std::ios_base::out | std::ios_base::trunc);
 	srand(13);
-	//SimplePoolTestUnthreaded(poolMM);
-	PoolTestUnthreaded(poolMM);
+	//SimplePoolTestUnthreaded(poolMM, file);
+	PoolTestUnthreaded(poolMM, file);
+
+	file.close();
+
+	file.open("pool_default.csv", std::ios_base::out | std::ios_base::trunc);
 	srand(13);
-	//SimplePoolTestUnthreaded(defaultMM);
-	PoolTestUnthreaded(defaultMM);
+	//SimplePoolTestUnthreaded(defaultMM, file);
+	PoolTestUnthreaded(defaultMM, file);
+
+	file.close();
 
 	std::cout << "Hej" << std::endl;
 	std::cin.get();
@@ -66,10 +77,10 @@ int main()
 
 
 template <typename T>
-void SimplePoolTestUnthreaded(T& allocator)
+void SimplePoolTestUnthreaded(T& allocator, std::fstream& p_file)
 {
 	Timer timer;
-	std::vector<void*> ptrs;
+	std::vector<Particle*> ptrs;
 	int frameCount = 0;
 	double totalTime = 0.0;
 
@@ -82,7 +93,7 @@ void SimplePoolTestUnthreaded(T& allocator)
 
 		for (size_t k = 0; k < SIMPLE_POOL_PARTICLE_COUNT; ++k)
 		{
-			ptrs.push_back(allocator.Alloc());
+			ptrs.push_back(new (allocator.Alloc()) Particle(k));
 		}
 
 		for (size_t k = 0; k < SIMPLE_POOL_PARTICLE_COUNT; ++k)
@@ -96,6 +107,7 @@ void SimplePoolTestUnthreaded(T& allocator)
 		double elapsed = timer.Stop();
 
 		// Store profiling data.
+		p_file << elapsed << std::endl;
 		totalTime += elapsed;
 		frameCount++;
 	}
@@ -110,54 +122,71 @@ void SimplePoolTestUnthreaded(T& allocator)
 	The time for allocation and deallocation every frame will be measured.
 */
 template <typename T>
-void PoolTestUnthreaded(T& allocator)
+void PoolTestUnthreaded(T& allocator, std::fstream& p_file)
 {
-	Timer timer;
+	Timer frameTimer;
 	bool running = true;
 	
-	std::vector<Particle*> particles;
+	size_t freeList[POOL_TEST_PARTICLE_COUNT];
+	Particle* particles[POOL_TEST_PARTICLE_COUNT];
+
+	for(unsigned i = 0; i < POOL_TEST_PARTICLE_COUNT; ++i)
+		freeList[i] = i;
+
+	int freeListIndex = POOL_TEST_PARTICLE_COUNT - 1;
 	int frameCount = 0;
 	double totalTime = 0.0;
 	double minTime = +100000000.0;
 	double maxTime = -100000000.0;
-	particles.reserve(POOL_TEST_PARTICLE_COUNT);
 
 	while (running)
 	{
+		int creations = 0;
+		int deletions = 0;
+		double creationTime = 0.0;
+		double deletionTime = 0.0;
+
 		// Start timing
-		timer.Start();
+		frameTimer.Start();
 
 		// Allocate particle objects
-		while (frameCount < POOL_TEST_SPAWN_FRAME_LIMIT && particles.size() < POOL_TEST_PARTICLE_COUNT)
+		while (frameCount < POOL_TEST_SPAWN_FRAME_LIMIT && freeListIndex != -1)
 		{
-			particles.push_back(new(allocator.Alloc()) Particle(rand() % POOL_TEST_PARTICLE_MAX_LIFETIME + 2));
+			creations++;
+
+			int lifetime = rand() % POOL_TEST_PARTICLE_MAX_LIFETIME + 2;
+			Particle* p = new(allocator.Alloc()) Particle(lifetime);
+			
+			particles[freeList[freeListIndex--]] = p;
 		}
 
 		// Update simulation of particles (increase lived time)
-		for (auto particle : particles)
-		{
-			particle->framesLeftToLive--;
-		}
-
 		// Deallocate dead particle objects.
-		for (auto it = particles.begin(); it != particles.end();)
+		for (size_t i = 0; i < POOL_TEST_PARTICLE_COUNT; ++i)
 		{
-			if ((*it)->framesLeftToLive <= 0)
+			Particle*& particle = particles[i];
+
+			if(particle != nullptr)
 			{
-				allocator.Free(*it);
-				it = particles.erase(it);
-			}
-			else
-			{
-				it++;
+				particle->framesLeftToLive--;
+
+				if (particle->framesLeftToLive <= 0)
+				{
+					deletions++;
+
+					allocator.Free(particle);
+
+					particle = nullptr;
+					freeList[++freeListIndex] = i;
+				}
 			}
 		}
 
 		// Check if all are dead and terminate.
-		running = !particles.empty();
+		running = freeListIndex != POOL_TEST_PARTICLE_COUNT - 1;
 
 		// Measure time.
-		double elapsed = timer.Stop();
+		double elapsed = frameTimer.Stop();
 
 		if (elapsed < minTime)
 			minTime = elapsed;
@@ -165,6 +194,8 @@ void PoolTestUnthreaded(T& allocator)
 			maxTime = elapsed;
 
 		// Store profiling data.
+		p_file << elapsed << ", " << creations << ", " << deletions << ", " << creationTime << ", " << deletionTime << std::endl;
+
 		totalTime += elapsed;
 		frameCount++;
 	}
