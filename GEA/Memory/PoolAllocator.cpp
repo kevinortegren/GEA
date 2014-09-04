@@ -1,5 +1,6 @@
 #include "PoolAllocator.h"
 #include <malloc.h>
+#include <cassert>
 
 PoolAllocator::PoolAllocator(unsigned elementSize, unsigned numElements)
 	: m_start(nullptr), m_next(nullptr)
@@ -47,13 +48,11 @@ void PoolAllocator::Free()
 
 void* PoolAllocator::Alloc()
 {
-	if (m_next != nullptr) {
-		PoolElement* head = m_next;
-		m_next = head->m_next;
-		return head;
-	}
-
-	return nullptr;
+	assert(m_next != nullptr);
+		
+	PoolElement* head = m_next;
+	m_next = head->m_next;
+	return head;
 
 	/*
 	// Reached the end of list return nullptr.
@@ -75,21 +74,21 @@ void PoolAllocator::Free(void* ptr)
 	m_next = head;
 }
 
-PoolMemoryManager::PoolMemoryManager(unsigned elementSize, unsigned numElements)
+ThreadedPoolAllocator::ThreadedPoolAllocator(unsigned elementSize, unsigned numElements)
 	: allocator(elementSize, numElements)
 {
 
 }
 
-void* PoolMemoryManager::Alloc()
+void* ThreadedPoolAllocator::Alloc()
 {
-	//std::lock_guard<std::mutex> lock(mtx);
+	std::lock_guard<std::mutex> lock(mtx);
 	return allocator.Alloc();
 }
  
-void PoolMemoryManager::Free(void* ptr)
+void ThreadedPoolAllocator::Free(void* ptr)
 {
-	//std::lock_guard<std::mutex> lock(mtx);
+	std::lock_guard<std::mutex> lock(mtx);
 	allocator.Free(ptr);
 }
 

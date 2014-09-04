@@ -24,10 +24,10 @@ private:
 	PoolElement* m_next;
 };
 
-class PoolMemoryManager
+class ThreadedPoolAllocator
 {
 public:
-	PoolMemoryManager(unsigned elementSize, unsigned numElements);
+	ThreadedPoolAllocator(unsigned elementSize, unsigned numElements);
 	void* Alloc();
 	void Free(void* ptr);
 private:
