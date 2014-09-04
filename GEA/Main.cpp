@@ -7,9 +7,9 @@
 #include "Memory/StackAllocator.h"
 #include "Memory/PoolAllocator.h"
 
-const size_t STACK_TEST_WORKER_COUNT = 1;
+const size_t STACK_TEST_WORKER_COUNT = 4;
 const size_t STACK_TEST_OBJECTS_PER_WORKER = 512;
-const size_t STACK_TEST_FRAME_COUNT = 1024;
+const size_t STACK_TEST_FRAME_COUNT = 100;
 
 const size_t POOL_TEST_SPAWN_FRAME_LIMIT = 2048;
 const size_t POOL_TEST_PARTICLE_COUNT = 4096;
@@ -18,8 +18,7 @@ const size_t POOL_TEST_PARTICLE_MAX_LIFETIME = 8;
 const size_t POOL_TEST_THREADED_SPAWN_FRAME_LIMIT = 2048;
 const size_t POOL_TEST_THREADED_PARTICLE_COUNT = 4096;
 const size_t POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME = 8;
-const size_t POOL_TEST_THREADED_EXPERIMENT_COUNT = 1;
-const size_t POOL_TEST_THREADED_WORKER_COUNT = 1;
+const size_t POOL_TEST_THREADED_WORKER_COUNT = 4;
 
 const size_t SIMPLE_POOL_TEST_FRAME_COUNT = 1024;
 const size_t SIMPLE_POOL_PARTICLE_COUNT = 1024;
@@ -70,11 +69,9 @@ int main()
 		RNDThreaded[i] = rand() % POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME + 2;
 	}
 
-	/*
-	StackTestCustomUnthreaded();
-	StackTestCustom();
-	StackTestDefault();
-	*/
+	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl;			StackTestCustomUnthreaded();		std::cout << std::endl;
+	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;				StackTestCustom();					std::cout << std::endl;
+	//std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
 
 	DefaultMemoryManager defaultMM(sizeof(Particle));
 	PoolAllocator poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT);
@@ -251,48 +248,6 @@ void PoolTestThreaded(T& allocator, std::fstream& p_file)
 	{
 		workers[k].join();
 	}
-
-	/*
-	Timer timer;
-	double totalTime = 0.0;
-	double minTime = +100000000.0;
-	double maxTime = -100000000.0;
-
-	for (int i = 0; i < POOL_TEST_THREADED_EXPERIMENT_COUNT; ++i)
-	{
-		std::vector<std::thread> workers;
-		workers.reserve(POOL_TEST_THREADED_WORKER_COUNT);
-
-		timer.Start();
-
-		for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
-		{
-			workers.push_back(std::thread(PoolTestTask<T>, std::ref(allocator)));
-		}
-
-		for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
-		{
-			workers[k].join();
-		}
-
-		double elapsed = timer.Stop();
-		totalTime += elapsed;
-
-		if (elapsed < minTime)
-			minTime = elapsed;
-		if (elapsed > maxTime)
-			maxTime = elapsed;
-
-		//std::cout << "Experiment " << i << " / " << POOL_TEST_EXPERIMENT_COUNT << ": " << elapsed << std::endl;
-		p_file << elapsed << std::endl;
-	}
-
-	std::cout << "Worker Thread Count: " << POOL_TEST_THREADED_WORKER_COUNT << std::endl;
-	std::cout << "Experiment Count: " << POOL_TEST_THREADED_EXPERIMENT_COUNT << std::endl;
-	std::cout << "Experiment Time Average: " << totalTime / POOL_TEST_THREADED_EXPERIMENT_COUNT << std::endl;
-	std::cout << "Experiment Min Time: " << minTime << std::endl;
-	std::cout << "Experiment Max Time: " << maxTime << std::endl;
-	*/
 }
 
 /*
@@ -388,6 +343,8 @@ void StackTestCustom()
 	workers.reserve(STACK_TEST_WORKER_COUNT);
 
 	double totalTime = 0.0;
+	double minTime = +100000000.0;
+	double maxTime = -100000000.0;
 	int frameCount = 0;
 
 	for (size_t k = 0; k < STACK_TEST_FRAME_COUNT; ++k)
@@ -420,9 +377,16 @@ void StackTestCustom()
 		// Store profiling data.
 		totalTime += elapsed;
 		frameCount++;
+
+		if (elapsed < minTime)
+			minTime = elapsed;
+		if (elapsed > maxTime)
+			maxTime = elapsed;
 	}
 
-	std::cout << totalTime / frameCount << std::endl;
+	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	std::cout << "Min Frame Time: " << minTime << std::endl;
+	std::cout << "Max Frame Time: " << maxTime << std::endl;
 }
 
 void StackTestCustomUnthreaded()
@@ -431,6 +395,8 @@ void StackTestCustomUnthreaded()
 	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * (STACK_TEST_OBJECTS_PER_WORKER / 2) * (STACK_TEST_OBJECTS_PER_WORKER + 1));
 
 	double totalTime = 0.0;
+	double minTime = +100000000.0;
+	double maxTime = -100000000.0;
 	int frameCount = 0;
 
 	for (size_t k = 0; k < STACK_TEST_FRAME_COUNT; ++k)
@@ -453,9 +419,16 @@ void StackTestCustomUnthreaded()
 		// Store profiling data.
 		totalTime += elapsed;
 		frameCount++;
+
+		if (elapsed < minTime)
+			minTime = elapsed;
+		if (elapsed > maxTime)
+			maxTime = elapsed;
 	}
 
-	std::cout << totalTime / frameCount << std::endl;
+	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	std::cout << "Min Frame Time: " << minTime << std::endl;
+	std::cout << "Max Frame Time: " << maxTime << std::endl;
 }
 
 void StackTestTaskCustom(StackMemoryManager& stack)
@@ -484,6 +457,8 @@ void StackTestDefault()
 	workers.reserve(STACK_TEST_WORKER_COUNT);
 
 	double totalTime = 0.0;
+	double minTime = +100000000.0;
+	double maxTime = -100000000.0;
 	int frameCount = 0;
 
 	for (size_t k = 0; k < STACK_TEST_FRAME_COUNT; ++k)
@@ -512,9 +487,16 @@ void StackTestDefault()
 		// Store profiling data.
 		totalTime += elapsed;
 		frameCount++;
+
+		if (elapsed < minTime)
+			minTime = elapsed;
+		if (elapsed > maxTime)
+			maxTime = elapsed;
 	}
 
-	std::cout << totalTime / frameCount << std::endl;
+	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	std::cout << "Min Frame Time: " << minTime << std::endl;
+	std::cout << "Max Frame Time: " << maxTime << std::endl;
 }
 
 void StackTestTaskDefault()
