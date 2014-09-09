@@ -6,6 +6,7 @@
 #include "Timer.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/PoolAllocator.h"
+#include "CMDColor.h"
 
 const size_t STACK_TEST_WORKER_COUNT = 4;
 const size_t STACK_TEST_OBJECTS_PER_WORKER = 512;
@@ -58,6 +59,7 @@ void StackTestTaskCustomSameSize(StackMemoryManager& stack);
 
 int main()
 {
+	ColorCMD::ConsoleColorInit();
 	srand(13);
 	for (int i = 0; i < POOL_TEST_PARTICLE_COUNT; ++i)
 	{
@@ -70,10 +72,12 @@ int main()
 	}
 
 	//Print stack test parameters
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
 	std::cout << "STACK_TEST_WORKER_COUNT: " << STACK_TEST_WORKER_COUNT << std::endl;
 	std::cout << "STACK_TEST_OBJECTS_PER_WORKER: " << STACK_TEST_OBJECTS_PER_WORKER << std::endl;
 	std::cout << "STACK_TEST_FRAME_COUNT: " << STACK_TEST_FRAME_COUNT << std::endl;
 	std::cout << std::endl;
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
 	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl;			StackTestCustomUnthreaded();		std::cout << std::endl;
 	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;				StackTestCustom();					std::cout << std::endl;
 	std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
@@ -91,20 +95,26 @@ int main()
 	file[5].open("pool_threaded_default.csv", std::ios_base::trunc | std::ios_base::out);
 
 	//Print pool test parameters
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
 	std::cout << "POOL_TEST_SPAWN_FRAME_LIMIT: " << POOL_TEST_SPAWN_FRAME_LIMIT << std::endl;
 	std::cout << "POOL_TEST_PARTICLE_COUNT: " << POOL_TEST_PARTICLE_COUNT << std::endl;
 	std::cout << "POOL_TEST_PARTICLE_MAX_LIFETIME: " << POOL_TEST_PARTICLE_MAX_LIFETIME << std::endl;
 	std::cout << std::endl;
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
 
 
 	std::cout << "-- Pool Test Unthreaded (Custom) --" << std::endl;				PoolTestUnthreaded(poolMM, file[1]);				std::cout << std::endl;
 	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, file[4]);				std::cout << std::endl;
 	std::cout << std::endl;
+
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
 	std::cout << "POOL_TEST_THREADED_SPAWN_FRAME_LIMIT: " << POOL_TEST_THREADED_SPAWN_FRAME_LIMIT << std::endl;
 	std::cout << "POOL_TEST_THREADED_PARTICLE_COUNT: " << POOL_TEST_THREADED_PARTICLE_COUNT << std::endl;
 	std::cout << "POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME: " << POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME << std::endl;
 	std::cout << "POOL_TEST_THREADED_WORKER_COUNT: " << POOL_TEST_THREADED_WORKER_COUNT << std::endl;
 	std::cout << std::endl;
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
+
 	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, file[2]);			std::cout << std::endl;
 	std::cout << "-- Pool Test Threaded (Default) --" << std::endl;					PoolTestThreaded(defaultMM, file[5]);				std::cout << std::endl;
 

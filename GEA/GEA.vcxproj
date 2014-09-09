@@ -78,6 +78,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocator.h" />
+    <ClInclude Include="CMDColor.h" />
     <ClInclude Include="Memory\PoolAllocator.h" />
     <ClInclude Include="Memory\StackAllocator.h" />
     <ClInclude Include="Timer.h" />
