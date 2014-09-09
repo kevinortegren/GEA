@@ -69,9 +69,14 @@ int main()
 		RNDThreaded[i] = rand() % POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME + 2;
 	}
 
+	//Print stack test parameters
+	std::cout << "STACK_TEST_WORKER_COUNT: " << STACK_TEST_WORKER_COUNT << std::endl;
+	std::cout << "STACK_TEST_OBJECTS_PER_WORKER: " << STACK_TEST_OBJECTS_PER_WORKER << std::endl;
+	std::cout << "STACK_TEST_FRAME_COUNT: " << STACK_TEST_FRAME_COUNT << std::endl;
+	std::cout << std::endl;
 	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl;			StackTestCustomUnthreaded();		std::cout << std::endl;
 	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;				StackTestCustom();					std::cout << std::endl;
-	//std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
+	std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
 
 	DefaultMemoryManager defaultMM(sizeof(Particle));
 	PoolAllocator poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT);
@@ -85,13 +90,22 @@ int main()
 	file[4].open("pool_unthreaded_default.csv", std::ios_base::trunc | std::ios_base::out);
 	file[5].open("pool_threaded_default.csv", std::ios_base::trunc | std::ios_base::out);
 
+	//Print pool test parameters
+	std::cout << "POOL_TEST_SPAWN_FRAME_LIMIT: " << POOL_TEST_SPAWN_FRAME_LIMIT << std::endl;
+	std::cout << "POOL_TEST_PARTICLE_COUNT: " << POOL_TEST_PARTICLE_COUNT << std::endl;
+	std::cout << "POOL_TEST_PARTICLE_MAX_LIFETIME: " << POOL_TEST_PARTICLE_MAX_LIFETIME << std::endl;
+	std::cout << std::endl;
 
-	//std::cout << "-- Simple Pool Test Unthreaded (Custom) --" << std::endl;		SimplePoolTestUnthreaded(poolMM, file[0]);			std::cout << std::endl;
+
 	std::cout << "-- Pool Test Unthreaded (Custom) --" << std::endl;				PoolTestUnthreaded(poolMM, file[1]);				std::cout << std::endl;
-	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, file[2]);			std::cout << std::endl;
-
-	//std::cout << "-- Simple Pool Test Unthreaded (Default) --" << std::endl;		SimplePoolTestUnthreaded(defaultMM, file[3]);		std::cout << std::endl;
 	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, file[4]);				std::cout << std::endl;
+	std::cout << std::endl;
+	std::cout << "POOL_TEST_THREADED_SPAWN_FRAME_LIMIT: " << POOL_TEST_THREADED_SPAWN_FRAME_LIMIT << std::endl;
+	std::cout << "POOL_TEST_THREADED_PARTICLE_COUNT: " << POOL_TEST_THREADED_PARTICLE_COUNT << std::endl;
+	std::cout << "POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME: " << POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME << std::endl;
+	std::cout << "POOL_TEST_THREADED_WORKER_COUNT: " << POOL_TEST_THREADED_WORKER_COUNT << std::endl;
+	std::cout << std::endl;
+	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, file[2]);			std::cout << std::endl;
 	std::cout << "-- Pool Test Threaded (Default) --" << std::endl;					PoolTestThreaded(defaultMM, file[5]);				std::cout << std::endl;
 
 	std::cout << "Hej" << std::endl;
