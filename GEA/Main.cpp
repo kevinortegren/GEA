@@ -11,6 +11,7 @@
 const size_t STACK_TEST_WORKER_COUNT = 4;
 const size_t STACK_TEST_OBJECTS_PER_WORKER = 512;
 const size_t STACK_TEST_FRAME_COUNT = 100;
+const size_t STACK_MAX_ALLOC_SIZE = 1024;
 
 const size_t POOL_TEST_SPAWN_FRAME_LIMIT = 2048;
 const size_t POOL_TEST_PARTICLE_COUNT = 4096;
@@ -36,6 +37,7 @@ struct Particle
 
 int RND[POOL_TEST_PARTICLE_COUNT];
 int RNDThreaded[POOL_TEST_THREADED_PARTICLE_COUNT];
+int RNDStack[STACK_TEST_OBJECTS_PER_WORKER];
 
 template <typename T>
 void SimplePoolTestUnthreaded(T& allocator, std::fstream& p_file);
@@ -69,6 +71,11 @@ int main()
 	for (int i = 0; i < POOL_TEST_THREADED_PARTICLE_COUNT; ++i)
 	{
 		RNDThreaded[i] = rand() % POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME + 2;
+	}
+
+	for(int i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
+	{
+		RNDStack[i] = rand() % STACK_MAX_ALLOC_SIZE + 1;
 	}
 
 	//Print stack test parameters
@@ -362,7 +369,7 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 void StackTestCustom()
 {
 	Timer timer;
-	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * (STACK_TEST_OBJECTS_PER_WORKER / 2) * (STACK_TEST_OBJECTS_PER_WORKER + 1));
+	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * STACK_TEST_OBJECTS_PER_WORKER * STACK_MAX_ALLOC_SIZE);
 	std::vector<std::thread> workers;
 	workers.reserve(STACK_TEST_WORKER_COUNT);
 
@@ -416,7 +423,7 @@ void StackTestCustom()
 void StackTestCustomUnthreaded()
 {
 	Timer timer;
-	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * (STACK_TEST_OBJECTS_PER_WORKER / 2) * (STACK_TEST_OBJECTS_PER_WORKER + 1));
+	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * STACK_TEST_OBJECTS_PER_WORKER * STACK_MAX_ALLOC_SIZE);
 
 	double totalTime = 0.0;
 	double minTime = +100000000.0;
@@ -431,7 +438,7 @@ void StackTestCustomUnthreaded()
 		// Start a number of worker threads that share the stack.
 		for (size_t i = 0; i < STACK_TEST_WORKER_COUNT; ++i)
 		{
-			StackTestTaskCustomSameSize(stack);
+			StackTestTaskCustom(stack);
 		}
 
 		// Clear the stack.
@@ -453,24 +460,6 @@ void StackTestCustomUnthreaded()
 	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
 	std::cout << "Min Frame Time: " << minTime << std::endl;
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
-}
-
-void StackTestTaskCustom(StackMemoryManager& stack)
-{
-	// Allocate the stack with custom memory manager.
-	for (size_t i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
-	{
-		char* ptr = (char*)stack.Alloc(i + 1);
-	}
-}
-
-void StackTestTaskCustomSameSize(StackMemoryManager& stack)
-{
-	// Allocate the stack with custom memory manager.
-	for (size_t i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
-	{
-		char* ptr = (char*)stack.Alloc(4);
-	}
 }
 
 
@@ -523,6 +512,18 @@ void StackTestDefault()
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
 }
 
+
+void StackTestTaskCustom(StackMemoryManager& stack)
+{
+	// Allocate the stack with custom memory manager.
+	for (size_t i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
+	{
+		//char* ptr = (char*)stack.Alloc(i + 1);
+		char* ptr = (char*)stack.Alloc(RNDStack[i]);
+	}
+}
+
+
 void StackTestTaskDefault()
 {
 	std::vector<void*> stack(STACK_TEST_OBJECTS_PER_WORKER);
@@ -530,7 +531,8 @@ void StackTestTaskDefault()
 	// Allocate the stack with default new..
 	for (size_t i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
 	{
-		stack[i] = new char[i + 1];
+		//stack[i] = new char[i + 1];
+		stack[i] = new char[RNDStack[i]];
 	}
 
 	// Delete the stack.
