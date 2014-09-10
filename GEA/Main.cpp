@@ -9,9 +9,9 @@
 #include "CMDColor.h"
 
 const size_t STACK_TEST_WORKER_COUNT = 4;
-const size_t STACK_TEST_OBJECTS_PER_WORKER = 512;
-const size_t STACK_TEST_FRAME_COUNT = 100;
-const size_t STACK_MAX_ALLOC_SIZE = 1024;
+const size_t STACK_TEST_OBJECTS_PER_WORKER = 2048;
+const size_t STACK_TEST_FRAME_COUNT = 1000;
+const size_t STACK_MAX_ALLOC_SIZE = 8192 * 4;
 
 const size_t POOL_TEST_SPAWN_FRAME_LIMIT = 2048;
 const size_t POOL_TEST_PARTICLE_COUNT = 4096;
@@ -33,6 +33,7 @@ struct Particle
 	}
 
 	int framesLeftToLive;
+	char data[8192];
 };
 
 int RND[POOL_TEST_PARTICLE_COUNT];
@@ -51,13 +52,16 @@ void PoolTestThreaded(T& allocator, std::fstream& p_file);
 template <typename T>
 void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx);
 
-void StackTestCustom();
+void MultiplePoolTestThreaded(std::fstream& p_file);
+void MultiplePoolTestTask(int tid, std::mutex& coutmtx);
+
+double StackTestCustom();
 void StackTestTaskCustom(StackMemoryManager& stack);
-void StackTestDefault();
+double StackTestDefault();
 void StackTestTaskDefault();
 
-void StackTestCustomUnthreaded();
-void StackTestDefaultUnthreaded();
+double StackTestCustomUnthreaded();
+double StackTestDefaultUnthreaded();
 void StackTestTaskCustomSameSize(StackMemoryManager& stack);
 
 int main()
@@ -74,34 +78,48 @@ int main()
 		RNDThreaded[i] = rand() % POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME + 2;
 	}
 
+	int rndStackSum = 0;
 	for(int i = 0; i < STACK_TEST_OBJECTS_PER_WORKER; ++i)
 	{
 		RNDStack[i] = rand() % STACK_MAX_ALLOC_SIZE + 1;
+		rndStackSum += RNDStack[i];
 	}
 
+	/*
 	//Print stack test parameters
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
 	std::cout << "STACK_TEST_WORKER_COUNT: " << STACK_TEST_WORKER_COUNT << std::endl;
 	std::cout << "STACK_TEST_OBJECTS_PER_WORKER: " << STACK_TEST_OBJECTS_PER_WORKER << std::endl;
 	std::cout << "STACK_TEST_FRAME_COUNT: " << STACK_TEST_FRAME_COUNT << std::endl;
+	std::cout << "STACK_MAX_ALLOC_SIZE: " << STACK_MAX_ALLOC_SIZE << std::endl;
+	std::cout << "STACK_ALLOCATION_PER_FRAME: " << rndStackSum * STACK_TEST_WORKER_COUNT << std::endl;
+
 	std::cout << std::endl;
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
-	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl;			StackTestCustomUnthreaded();		std::cout << std::endl;
-	std::cout << "-- Stack Test Unthreaded (Default) --" << std::endl;			StackTestDefaultUnthreaded();		std::cout << std::endl;
-	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;				StackTestCustom();					std::cout << std::endl;
-	std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
+
+	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl; double stackTestCustomTimeAvg = StackTestCustomUnthreaded();	std::cout << std::endl;	
+	std::cout << "-- Stack Test Unthreaded (Default) --" << std::endl; double stackTestDefaultTimeAvg = StackTestDefaultUnthreaded(); std::cout << std::endl;
+
+	std::cout << "Average Frame Time Difference: " << abs(stackTestCustomTimeAvg - stackTestDefaultTimeAvg) << std::endl << std::endl;
+
+	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;	 double stackTestCustomThreadedAvg = StackTestCustom();		std::cout << std::endl;
+	std::cout << "-- Stack Test Threaded (Default) --" << std::endl;  double stackTestDefaultThreadedAvg = StackTestDefault();	std::cout << std::endl;
+
+	std::cout << "Average Frame Time Difference: " << abs(stackTestCustomThreadedAvg - stackTestDefaultThreadedAvg) << std::endl << std::endl;
+	*/
 
 	DefaultMemoryManager defaultMM(sizeof(Particle));
 	PoolAllocator poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT);
 	ThreadedPoolAllocator threadedPoolMM(sizeof(Particle), POOL_TEST_THREADED_PARTICLE_COUNT * POOL_TEST_THREADED_WORKER_COUNT);
 
-	std::fstream file[6];
+	std::fstream file[7];
 	file[0].open("pool_simple_custom.csv", std::ios_base::trunc | std::ios_base::out);
 	file[1].open("pool_unthreaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
 	file[2].open("pool_threaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
 	file[3].open("pool_simple_default.csv", std::ios_base::trunc | std::ios_base::out);
 	file[4].open("pool_unthreaded_default.csv", std::ios_base::trunc | std::ios_base::out);
 	file[5].open("pool_threaded_default.csv", std::ios_base::trunc | std::ios_base::out);
+	file[6].open("multiple_pool_threaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
 
 	//Print pool test parameters
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
@@ -110,7 +128,6 @@ int main()
 	std::cout << "POOL_TEST_PARTICLE_MAX_LIFETIME: " << POOL_TEST_PARTICLE_MAX_LIFETIME << std::endl;
 	std::cout << std::endl;
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
-
 
 	std::cout << "-- Pool Test Unthreaded (Custom) --" << std::endl;				PoolTestUnthreaded(poolMM, file[1]);				std::cout << std::endl;
 	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, file[4]);				std::cout << std::endl;
@@ -127,12 +144,12 @@ int main()
 	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, file[2]);			std::cout << std::endl;
 	std::cout << "-- Pool Test Threaded (Default) --" << std::endl;					PoolTestThreaded(defaultMM, file[5]);				std::cout << std::endl;
 
+	std::cout << "-- Multiple Pool Test Threaded (Custom) --" << std::endl;			MultiplePoolTestThreaded(file[6]);				std::cout << std::endl;
+
 	std::cout << "Hej" << std::endl;
 	std::cin.get();
 	return 0;
 }
-
-
 
 template <typename T>
 void SimplePoolTestUnthreaded(T& allocator, std::fstream& p_file)
@@ -361,14 +378,105 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 	std::cout << "\tMax Frame Time: " << maxTime << std::endl;
 }
 
+void MultiplePoolTestThreaded(std::fstream& p_file)
+{
+	std::mutex coutmtx;
+	std::vector<std::thread> workers;
+	workers.reserve(POOL_TEST_THREADED_WORKER_COUNT);
 
+	for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
+	{
+		workers.push_back(std::thread(MultiplePoolTestTask, k, std::ref(coutmtx)));
+	}
+
+	for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
+	{
+		workers[k].join();
+	}
+}
+
+void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
+{
+	PoolAllocator allocator(sizeof(Particle), POOL_TEST_THREADED_PARTICLE_COUNT);
+
+	// Setup particle list and free-index list.
+	size_t freeList[POOL_TEST_THREADED_PARTICLE_COUNT];
+	Particle* particles[POOL_TEST_THREADED_PARTICLE_COUNT];
+
+	for(unsigned i = 0; i < POOL_TEST_THREADED_PARTICLE_COUNT; ++i)
+		freeList[i] = i;
+
+	int freeListIndex = POOL_TEST_THREADED_PARTICLE_COUNT - 1;
+
+	Timer timer;
+	int frameCount = 0;
+	double totalTime = 0.0;
+	double minTime = +100000000.0;
+	double maxTime = -100000000.0;
+
+	// Start the simulation
+	bool running = true;
+	while (running)
+	{
+		timer.Start();
+
+		// Allocate particle objects
+		while (frameCount < POOL_TEST_THREADED_SPAWN_FRAME_LIMIT && freeListIndex != -1)
+		{
+			int lifetime = RNDThreaded[freeList[freeListIndex]];
+			Particle* p = new(allocator.Alloc()) Particle(lifetime);
+			
+			particles[freeList[freeListIndex--]] = p;
+		}
+
+		// Update simulation of particles (increase lived time)
+		// Deallocate dead particle objects.
+		for (size_t i = 0; i < POOL_TEST_THREADED_PARTICLE_COUNT; ++i)
+		{
+			Particle*& particle = particles[i];
+
+			if(particle != nullptr)
+			{
+				particle->framesLeftToLive--;
+
+				if (particle->framesLeftToLive <= 0)
+				{
+					allocator.Free(particle);
+
+					particle = nullptr;
+					freeList[++freeListIndex] = i;
+				}
+			}
+		}
+
+		// Check if all are dead and terminate.
+		running = (freeListIndex != POOL_TEST_THREADED_PARTICLE_COUNT - 1)  || (frameCount < POOL_TEST_THREADED_SPAWN_FRAME_LIMIT);
+
+		double elapsed = timer.Stop();
+		frameCount++;
+		totalTime += elapsed;
+
+		if (elapsed < minTime)
+			minTime = elapsed;
+		if (elapsed > maxTime)
+			maxTime = elapsed;
+	}
+
+	std::lock_guard<std::mutex> lock(coutmtx);
+	std::cout << "Thread " << tid << std::endl;
+	std::cout << "\tFrames Simulated: " << frameCount << std::endl;
+	std::cout << "\tTotal Experiment Time: " << totalTime << std::endl;
+	std::cout << "\tAverage Frame Time: " << totalTime / frameCount << std::endl;
+	std::cout << "\tMin Frame Time: " << minTime << std::endl;
+	std::cout << "\tMax Frame Time: " << maxTime << std::endl;
+}
 
 /*
 	Stack Test with custom memory manager.
 
 	This will spawn a number of worker threads that will simultaneously use the memory manager.
 */
-void StackTestCustom()
+double StackTestCustom()
 {
 	Timer timer;
 	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * STACK_TEST_OBJECTS_PER_WORKER * STACK_MAX_ALLOC_SIZE);
@@ -417,12 +525,14 @@ void StackTestCustom()
 			maxTime = elapsed;
 	}
 
-	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	double avgFrameTime = totalTime / frameCount;
+	std::cout << "Average Frame Time: " << avgFrameTime << std::endl;
 	std::cout << "Min Frame Time: " << minTime << std::endl;
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
+	return avgFrameTime;
 }
 
-void StackTestCustomUnthreaded()
+double StackTestCustomUnthreaded()
 {
 	Timer timer;
 	StackMemoryManager stack(STACK_TEST_WORKER_COUNT * STACK_TEST_OBJECTS_PER_WORKER * STACK_MAX_ALLOC_SIZE);
@@ -459,13 +569,15 @@ void StackTestCustomUnthreaded()
 			maxTime = elapsed;
 	}
 
-	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	double avgFrameTime = totalTime / frameCount;
+	std::cout << "Average Frame Time: " << avgFrameTime << std::endl;
 	std::cout << "Min Frame Time: " << minTime << std::endl;
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
+	return avgFrameTime;
 }
 
 
-void StackTestDefault()
+double StackTestDefault()
 {
 	Timer timer;
 	std::vector<std::thread> workers;
@@ -509,9 +621,11 @@ void StackTestDefault()
 			maxTime = elapsed;
 	}
 
-	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	double avgFrameTime = totalTime / frameCount;
+	std::cout << "Average Frame Time: " << avgFrameTime << std::endl;
 	std::cout << "Min Frame Time: " << minTime << std::endl;
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
+	return avgFrameTime;
 }
 
 
@@ -545,7 +659,7 @@ void StackTestTaskDefault()
 }
 
 
-void StackTestDefaultUnthreaded()
+double StackTestDefaultUnthreaded()
 {
 	Timer timer;
 	double totalTime = 0.0;
@@ -577,8 +691,10 @@ void StackTestDefaultUnthreaded()
 			maxTime = elapsed;
 	}
 
-	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	double avgFrameTime = totalTime / frameCount;
+	std::cout << "Average Frame Time: " << avgFrameTime << std::endl;
 	std::cout << "Min Frame Time: " << minTime << std::endl;
 	std::cout << "Max Frame Time: " << maxTime << std::endl;
-	
+	return avgFrameTime;
+
 }
