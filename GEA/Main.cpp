@@ -3,6 +3,7 @@
 #include <thread>
 #include <fstream>
 #include <cassert>
+#include <sstream>
 #include "Timer.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/PoolAllocator.h"
@@ -38,16 +39,19 @@ int RNDThreaded[POOL_TEST_THREADED_PARTICLE_COUNT];
 int RNDStack[STACK_TEST_OBJECTS_PER_WORKER];
 
 template <typename T>
-void PoolTestUnthreaded(T& allocator, std::fstream& p_file);
+void PoolTestUnthreaded(T& allocator, bool custom);
 
 template <typename T>
-void PoolTestThreaded(T& allocator, std::fstream& p_file);
+void PoolTestThreaded(T& allocator, bool custom);
 
 template <typename T>
-void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx);
+void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx, bool custom);
 
-void MultiplePoolTestThreaded(std::fstream& p_file);
+void MultiplePoolTestThreaded();
 void MultiplePoolTestTask(int tid, std::mutex& coutmtx);
+
+void PoolTestWriteCaptions(std::fstream& file);
+void PoolTestWriteFrameData(std::fstream& file, int frameNumber, double elapsed, int creations, int deletions, int allocationSize);
 
 double StackTestCustom();
 void StackTestTaskCustom(StackMemoryManager& stack);
@@ -104,13 +108,6 @@ int main()
 	PoolAllocator poolMM(sizeof(Particle), POOL_TEST_PARTICLE_COUNT);
 	ThreadedPoolAllocator threadedPoolMM(sizeof(Particle), POOL_TEST_THREADED_PARTICLE_COUNT * POOL_TEST_THREADED_WORKER_COUNT);
 
-	std::fstream file[5];
-	file[0].open("pool_unthreaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
-	file[1].open("pool_threaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
-	file[2].open("pool_unthreaded_default.csv", std::ios_base::trunc | std::ios_base::out);
-	file[3].open("pool_threaded_default.csv", std::ios_base::trunc | std::ios_base::out);
-	file[4].open("multiple_pool_threaded_custom.csv", std::ios_base::trunc | std::ios_base::out);
-
 	//Print pool test parameters
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
 	std::cout << "POOL_TEST_SPAWN_FRAME_LIMIT: " << POOL_TEST_SPAWN_FRAME_LIMIT << std::endl;
@@ -119,8 +116,8 @@ int main()
 	std::cout << std::endl;
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
 
-	std::cout << "-- Pool Test Unthreaded (Custom) --" << std::endl;				PoolTestUnthreaded(poolMM, file[0]);				std::cout << std::endl;
-	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, file[2]);				std::cout << std::endl;
+	std::cout << "-- Pool Test Unthreaded (Custom) --" << std::endl;				PoolTestUnthreaded(poolMM, true);				std::cout << std::endl;
+	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, false);				std::cout << std::endl;
 	std::cout << std::endl;
 
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
@@ -131,10 +128,10 @@ int main()
 	std::cout << std::endl;
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
 
-	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, file[1]);			std::cout << std::endl;
-	std::cout << "-- Pool Test Threaded (Default) --" << std::endl;					PoolTestThreaded(defaultMM, file[3]);				std::cout << std::endl;
+	std::cout << "-- Pool Test Threaded (Custom) --" << std::endl;					PoolTestThreaded(threadedPoolMM, true);			std::cout << std::endl;
+	std::cout << "-- Pool Test Threaded (Default) --" << std::endl;					PoolTestThreaded(defaultMM, false);				std::cout << std::endl;
 
-	std::cout << "-- Multiple Pool Test Threaded (Custom) --" << std::endl;			MultiplePoolTestThreaded(file[4]);				std::cout << std::endl;
+	std::cout << "-- Multiple Pool Test Threaded (Custom) --" << std::endl;			MultiplePoolTestThreaded();				std::cout << std::endl;
 
 	std::cout << "Hej" << std::endl;
 	std::cin.get();
@@ -148,8 +145,15 @@ int main()
 	The time for allocation and deallocation every frame will be measured.
 */
 template <typename T>
-void PoolTestUnthreaded(T& allocator, std::fstream& p_file)
+void PoolTestUnthreaded(T& allocator, bool custom)
 {
+	std::stringstream ss;
+	ss << "pool_unthreaded_" << (custom ? "custom" : "default") << ".csv";
+	
+	std::fstream file;
+	file.open(ss.str(), std::ios_base::trunc | std::ios_base::out);
+	PoolTestWriteCaptions(file);
+
 	Timer frameTimer;
 	bool running = true;
 	
@@ -169,8 +173,6 @@ void PoolTestUnthreaded(T& allocator, std::fstream& p_file)
 	{
 		int creations = 0;
 		int deletions = 0;
-		double creationTime = 0.0;
-		double deletionTime = 0.0;
 
 		// Start timing
 		frameTimer.Start();
@@ -220,7 +222,7 @@ void PoolTestUnthreaded(T& allocator, std::fstream& p_file)
 			maxTime = elapsed;
 
 		// Store profiling data.
-		p_file << elapsed << ", " << creations << ", " << deletions << ", " << creationTime << ", " << deletionTime << std::endl;
+		PoolTestWriteFrameData(file, frameCount, elapsed, creations, deletions, creations * sizeof(Particle));
 
 		totalTime += elapsed;
 		frameCount++;
@@ -234,7 +236,7 @@ void PoolTestUnthreaded(T& allocator, std::fstream& p_file)
 }
 
 template <typename T>
-void PoolTestThreaded(T& allocator, std::fstream& p_file)
+void PoolTestThreaded(T& allocator, bool custom)
 {
 	std::mutex coutmtx;
 	std::vector<std::thread> workers;
@@ -242,7 +244,7 @@ void PoolTestThreaded(T& allocator, std::fstream& p_file)
 
 	for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
 	{
-		workers.push_back(std::thread(PoolTestTask<T>, std::ref(allocator), k, std::ref(coutmtx)));
+		workers.push_back(std::thread(PoolTestTask<T>, std::ref(allocator), k, std::ref(coutmtx), custom));
 	}
 
 	for (int k = 0; k < POOL_TEST_THREADED_WORKER_COUNT; ++k)
@@ -255,8 +257,15 @@ void PoolTestThreaded(T& allocator, std::fstream& p_file)
 	Runs a particle system of its own.
 */
 template <typename T>
-void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
+void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx, bool custom)
 {
+	std::stringstream ss;
+	ss << "pool_threaded_" << (custom ? "custom" : "default") << "_" << tid << ".csv";
+
+	std::fstream file;
+	file.open(ss.str(), std::ios_base::trunc | std::ios_base::out);
+	PoolTestWriteCaptions(file);
+
 	// Setup particle list and free-index list.
 	size_t freeList[POOL_TEST_THREADED_PARTICLE_COUNT];
 	Particle* particles[POOL_TEST_THREADED_PARTICLE_COUNT];
@@ -276,11 +285,16 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 	bool running = true;
 	while (running)
 	{
+		int creations = 0;
+		int deletions = 0;
+
 		timer.Start();
 
 		// Allocate particle objects
 		while (frameCount < POOL_TEST_THREADED_SPAWN_FRAME_LIMIT && freeListIndex != -1)
 		{
+			creations++;
+
 			int lifetime = RNDThreaded[freeList[freeListIndex]];
 			Particle* p = new(allocator.Alloc()) Particle(lifetime);
 			
@@ -299,6 +313,8 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 
 				if (particle->framesLeftToLive <= 0)
 				{
+					deletions++;
+
 					allocator.Free(particle);
 
 					particle = nullptr;
@@ -318,6 +334,8 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 			minTime = elapsed;
 		if (elapsed > maxTime)
 			maxTime = elapsed;
+
+		PoolTestWriteFrameData(file, frameCount, elapsed, creations, deletions, creations * sizeof(Particle));
 	}
 
 	std::lock_guard<std::mutex> lock(coutmtx);
@@ -329,7 +347,7 @@ void PoolTestTask(T& allocator, int tid, std::mutex& coutmtx)
 	std::cout << "\tMax Frame Time: " << maxTime << std::endl;
 }
 
-void MultiplePoolTestThreaded(std::fstream& p_file)
+void MultiplePoolTestThreaded()
 {
 	std::mutex coutmtx;
 	std::vector<std::thread> workers;
@@ -348,6 +366,14 @@ void MultiplePoolTestThreaded(std::fstream& p_file)
 
 void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
 {
+	std::stringstream ss;
+	ss << "multiple_pool_threaded_custom_" << tid << ".csv";
+
+	std::fstream file;
+	file.open(ss.str(), std::ios_base::trunc | std::ios_base::out);
+	
+	PoolTestWriteCaptions(file);
+
 	PoolAllocator allocator(sizeof(Particle), POOL_TEST_THREADED_PARTICLE_COUNT);
 
 	// Setup particle list and free-index list.
@@ -369,11 +395,16 @@ void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
 	bool running = true;
 	while (running)
 	{
+		int creations = 0;
+		int deletions = 0;
+
 		timer.Start();
 
 		// Allocate particle objects
 		while (frameCount < POOL_TEST_THREADED_SPAWN_FRAME_LIMIT && freeListIndex != -1)
 		{
+			creations++;
+
 			int lifetime = RNDThreaded[freeList[freeListIndex]];
 			Particle* p = new(allocator.Alloc()) Particle(lifetime);
 			
@@ -392,6 +423,8 @@ void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
 
 				if (particle->framesLeftToLive <= 0)
 				{
+					deletions++;
+
 					allocator.Free(particle);
 
 					particle = nullptr;
@@ -411,6 +444,8 @@ void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
 			minTime = elapsed;
 		if (elapsed > maxTime)
 			maxTime = elapsed;
+
+		PoolTestWriteFrameData(file, frameCount, elapsed, creations, deletions, creations * sizeof(Particle));
 	}
 
 	std::lock_guard<std::mutex> lock(coutmtx);
@@ -420,6 +455,16 @@ void MultiplePoolTestTask( int tid, std::mutex& coutmtx)
 	std::cout << "\tAverage Frame Time: " << totalTime / frameCount << std::endl;
 	std::cout << "\tMin Frame Time: " << minTime << std::endl;
 	std::cout << "\tMax Frame Time: " << maxTime << std::endl;
+}
+
+void PoolTestWriteCaptions(std::fstream& file)
+{
+	file << "Frame; Time; Creations; Deletions; Allocation Size" << std::endl;
+}
+
+void PoolTestWriteFrameData(std::fstream& file, int frameNumber, double elapsed, int creations, int deletions, int allocationSize)
+{
+	file << frameNumber << "; " << elapsed << "; " << creations << "; " << deletions << "; " << creations * sizeof(Particle) << std::endl;
 }
 
 /*
