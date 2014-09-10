@@ -55,6 +55,7 @@ void StackTestDefault();
 void StackTestTaskDefault();
 
 void StackTestCustomUnthreaded();
+void StackTestDefaultUnthreaded();
 void StackTestTaskCustomSameSize(StackMemoryManager& stack);
 
 int main()
@@ -72,13 +73,14 @@ int main()
 	}
 
 	//Print stack test parameters
-	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
 	std::cout << "STACK_TEST_WORKER_COUNT: " << STACK_TEST_WORKER_COUNT << std::endl;
 	std::cout << "STACK_TEST_OBJECTS_PER_WORKER: " << STACK_TEST_OBJECTS_PER_WORKER << std::endl;
 	std::cout << "STACK_TEST_FRAME_COUNT: " << STACK_TEST_FRAME_COUNT << std::endl;
 	std::cout << std::endl;
 	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::WHITE);
 	std::cout << "-- Stack Test Unthreaded (Custom) --" << std::endl;			StackTestCustomUnthreaded();		std::cout << std::endl;
+	std::cout << "-- Stack Test Unthreaded (Default) --" << std::endl;			StackTestDefaultUnthreaded();		std::cout << std::endl;
 	std::cout << "-- Stack Test Threaded (Custom) --" << std::endl;				StackTestCustom();					std::cout << std::endl;
 	std::cout << "-- Stack Test Threaded (Default) --" << std::endl;			StackTestDefault();					std::cout << std::endl;
 
@@ -95,7 +97,7 @@ int main()
 	file[5].open("pool_threaded_default.csv", std::ios_base::trunc | std::ios_base::out);
 
 	//Print pool test parameters
-	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
 	std::cout << "POOL_TEST_SPAWN_FRAME_LIMIT: " << POOL_TEST_SPAWN_FRAME_LIMIT << std::endl;
 	std::cout << "POOL_TEST_PARTICLE_COUNT: " << POOL_TEST_PARTICLE_COUNT << std::endl;
 	std::cout << "POOL_TEST_PARTICLE_MAX_LIFETIME: " << POOL_TEST_PARTICLE_MAX_LIFETIME << std::endl;
@@ -107,7 +109,7 @@ int main()
 	std::cout << "-- Pool Test Unthreaded (Default) --" << std::endl;				PoolTestUnthreaded(defaultMM, file[4]);				std::cout << std::endl;
 	std::cout << std::endl;
 
-	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::MANGENTA);
+	ColorCMD::SetTextColor(ColorCMD::ConsoleColor::AQUA);
 	std::cout << "POOL_TEST_THREADED_SPAWN_FRAME_LIMIT: " << POOL_TEST_THREADED_SPAWN_FRAME_LIMIT << std::endl;
 	std::cout << "POOL_TEST_THREADED_PARTICLE_COUNT: " << POOL_TEST_THREADED_PARTICLE_COUNT << std::endl;
 	std::cout << "POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME: " << POOL_TEST_THREADED_PARTICLE_MAX_LIFETIME << std::endl;
@@ -541,3 +543,40 @@ void StackTestTaskDefault()
 }
 
 
+void StackTestDefaultUnthreaded()
+{
+	Timer timer;
+	double totalTime = 0.0;
+	double minTime = +100000000.0;
+	double maxTime = -100000000.0;
+	int frameCount = 0;
+
+	for (size_t k = 0; k < STACK_TEST_FRAME_COUNT; ++k)
+	{
+		// Start timing.
+		timer.Start();
+	
+		// Allocate the stack with default new..
+		for (size_t i = 0; i < STACK_TEST_WORKER_COUNT; ++i)
+		{
+			StackTestTaskDefault();
+		}
+
+		// Measure time.
+		double elapsed = timer.Stop();
+
+		// Store profiling data.
+		totalTime += elapsed;
+		frameCount++;
+
+		if (elapsed < minTime)
+			minTime = elapsed;
+		if (elapsed > maxTime)
+			maxTime = elapsed;
+	}
+
+	std::cout << "Average Frame Time: " << totalTime / frameCount << std::endl;
+	std::cout << "Min Frame Time: " << minTime << std::endl;
+	std::cout << "Max Frame Time: " << maxTime << std::endl;
+	
+}
